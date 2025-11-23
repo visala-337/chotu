@@ -520,6 +520,13 @@ function toggleMusic() {
     }
 }
 
+// Expose commonly used functions to the global scope for inline handlers
+if (typeof window !== 'undefined') {
+    window.toggleMusic = toggleMusic;
+    window.nextStep = nextStep;
+    window.saveName = saveName;
+}
+
 // Function to create fireworks
 function createFireworks() {
     // Create initial fireworks
