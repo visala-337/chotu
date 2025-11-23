@@ -4,6 +4,10 @@ let currentStep = 1;
 let totalSteps = 0; // will be set after DOM loads to match actual .step elements
 let userName = "My Love";
 let typingStarted = false; // prevent multiple typing loops
+let bgAudio = null;
+let clickAudio = null;
+let typingAudio = null;
+let userInteracted = false;
 
 
 // Initialize particles.js
@@ -101,6 +105,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Determine how many steps are actually present in the HTML
     totalSteps = document.querySelectorAll('.step').length || 1;
 
+    // Get audio elements (may not exist if user hasn't added audio files)
+    bgAudio = document.getElementById('bgAudio');
+    clickAudio = document.getElementById('clickAudio');
+    typingAudio = document.getElementById('typingAudio');
+
+    // unlock audio on first user interaction (some browsers block autoplay)
+    document.addEventListener('click', function unlockAudio() {
+        userInteracted = true;
+        if (bgAudio) {
+            bgAudio.play().catch(() => {});
+        }
+        document.removeEventListener('click', unlockAudio);
+    });
+
     showStep(currentStep);
     createPetals();
 
@@ -139,6 +157,20 @@ function showStep(step) {
     // If the typing area is present in this step, start the message typing (only once)
     if (document.getElementById('typingText') && !typingStarted) {
         typeMessage();
+    }
+
+    // Control typing sound: pause if not on the typing step (step 2)
+    try {
+        if (typingAudio) {
+            if (step === 2 && typingStarted) {
+                typingAudio.play().catch(() => {});
+            } else {
+                typingAudio.pause();
+                typingAudio.currentTime = 0;
+            }
+        }
+    } catch (e) {
+        // ignore audio errors
     }
     
     // Update progress bar
@@ -216,13 +248,17 @@ function showStep(step) {
 
 // Function to go to next step
 function nextStep() {
+    // play click sound for feedback
+    try { if (clickAudio) { clickAudio.currentTime = 0; clickAudio.play().catch(()=>{}); } } catch(e){}
+
     if (currentStep < totalSteps) {
         currentStep++;
         showStep(currentStep);
-        
+
         // Open envelope if on step 1
         if (currentStep === 2) {
-            document.getElementById('envelope').classList.add('open');
+            const env = document.getElementById('envelope');
+            if (env) env.classList.add('open');
         }
     }
 }
@@ -366,6 +402,7 @@ function createPetals() {
 function typeMessage() {
     if (typingStarted) return;
     typingStarted = true;
+    try { if (typingAudio) { typingAudio.currentTime = 0; typingAudio.play().catch(()=>{}); } } catch(e) {}
     const messages = [
         "On your special day, I want you to know...",
         "You are the most amazing person I've ever met.",
@@ -414,6 +451,27 @@ function typeMessage() {
         document.getElementById('typedMessage').classList.add('show');
         type();
     }, 500);
+}
+
+// Play a short named sound (click, typing, etc.)
+function playSound(name) {
+    try {
+        if (name === 'click' && clickAudio) { clickAudio.currentTime = 0; clickAudio.play().catch(()=>{}); }
+        if (name === 'typing' && typingAudio) { typingAudio.currentTime = 0; typingAudio.play().catch(()=>{}); }
+    } catch(e){}
+}
+
+// Toggle background music play/pause (attached to the UI button)
+function toggleMusic() {
+    const btn = document.getElementById('musicToggle');
+    if (!bgAudio) return;
+    if (bgAudio.paused) {
+        bgAudio.play().catch(()=>{});
+        if (btn) btn.textContent = '🔊';
+    } else {
+        bgAudio.pause();
+        if (btn) btn.textContent = '🔈';
+    }
 }
 
 // Function to create fireworks

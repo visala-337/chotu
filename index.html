@@ -18,6 +18,7 @@
     
     
     <div class="container">
+        <div id="musicToggle" class="music-toggle" onclick="toggleMusic()" title="Toggle music">🔈</div>
         <div class="progress-bar">
             <div class="progress" id="progressBar"></div>
         </div>
@@ -84,6 +85,10 @@
         </div>
         
     </div>
+        <!-- Audio elements: place audio files in `audio/` folder (background.mp3, click.mp3, typing.mp3) -->
+        <audio id="bgAudio" src="audio/background.mp3" loop preload="none"></audio>
+        <audio id="clickAudio" src="audio/click.mp3" preload="none"></audio>
+        <audio id="typingAudio" src="audio/typing.mp3" loop preload="none"></audio>
   <script src="script.js"></script>
 </body>
 </html>
