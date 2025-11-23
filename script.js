@@ -110,13 +110,59 @@ document.addEventListener('DOMContentLoaded', function() {
     clickAudio = document.getElementById('clickAudio');
     typingAudio = document.getElementById('typingAudio');
 
+    // Set sensible defaults
+    if (bgAudio) {
+        bgAudio.loop = true;
+        bgAudio.volume = 0.5;
+    }
+    if (typingAudio) {
+        typingAudio.loop = true;
+        typingAudio.volume = 0.45;
+    }
+    if (clickAudio) {
+        clickAudio.volume = 0.9;
+    }
+
+    // Update the music button icon according to play state
+    function updateMusicButton() {
+        const btn = document.getElementById('musicToggle');
+        if (!btn || !bgAudio) return;
+        btn.textContent = bgAudio.paused ? '🔈' : '🔊';
+    }
+
+    // Attempt to autoplay once if the browser allows it (will fail silently otherwise)
+    (async function tryAutoPlay() {
+        try {
+            if (bgAudio) await bgAudio.play();
+        } catch (e) {
+            // Autoplay blocked — leave icon in 'muted' state and wait for user
+            updateMusicButton();
+        }
+        updateMusicButton();
+    })();
+
     // unlock audio on first user interaction (some browsers block autoplay)
     document.addEventListener('click', function unlockAudio() {
         userInteracted = true;
-        if (bgAudio) {
+        // Try to resume bgAudio and typingAudio if applicable
+        if (bgAudio && bgAudio.paused) {
             bgAudio.play().catch(() => {});
         }
+        if (typingAudio && typingStarted) {
+            typingAudio.play().catch(() => {});
+        }
+        updateMusicButton();
         document.removeEventListener('click', unlockAudio);
+    });
+
+    // Resume music when window regains focus or tab becomes visible (if user interacted before)
+    window.addEventListener('focus', () => {
+        if (userInteracted && bgAudio && bgAudio.paused) bgAudio.play().catch(()=>{});
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && userInteracted && bgAudio && bgAudio.paused) {
+            bgAudio.play().catch(()=>{});
+        }
     });
 
     showStep(currentStep);
