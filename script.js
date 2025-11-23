@@ -2,12 +2,12 @@
 // Initialize variables
 let currentStep = 1;
 let totalSteps = 0; // will be set after DOM loads to match actual .step elements
-let userName = "My Love";
-let typingStarted = false; // prevent multiple typing loops
+let userName = "chotu";
 let bgAudio = null;
 let clickAudio = null;
-let typingAudio = null;
 let userInteracted = false;
+// Message timers used for showing lines sequentially in step 2
+let _messageTimers = [];
 
 
 // Initialize particles.js
@@ -108,17 +108,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get audio elements (may not exist if user hasn't added audio files)
     bgAudio = document.getElementById('bgAudio');
     clickAudio = document.getElementById('clickAudio');
-    typingAudio = document.getElementById('typingAudio');
 
     // Set sensible defaults
     if (bgAudio) {
         bgAudio.loop = true;
         bgAudio.volume = 0.5;
     }
-    if (typingAudio) {
-        typingAudio.loop = true;
-        typingAudio.volume = 0.45;
-    }
+    // typing sound removed — messages are shown instantly
     if (clickAudio) {
         clickAudio.volume = 0.9;
     }
@@ -132,24 +128,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Attempt to autoplay once if the browser allows it (will fail silently otherwise)
     (async function tryAutoPlay() {
+        if (!bgAudio) { updateMusicButton(); return; }
         try {
-            if (bgAudio) await bgAudio.play();
+            // First try to play unmuted (best case)
+            bgAudio.muted = false;
+            await bgAudio.play();
         } catch (e) {
-            // Autoplay blocked — leave icon in 'muted' state and wait for user
-            updateMusicButton();
+            // Unmuted autoplay blocked — try muted autoplay so audio playback starts silently
+            try {
+                bgAudio.muted = true;
+                await bgAudio.play();
+                    // muted autoplay started; no UI shown per request
+            } catch (e2) {
+                // Even muted autoplay blocked — nothing more we can do automatically
+            }
         }
         updateMusicButton();
     })();
 
+    // Create a small UI prompt for enabling sound when autoplay falls back to muted
+    function showSoundPrompt() {
+        if (document.getElementById('soundPrompt')) return;
+        const prompt = document.createElement('div');
+        prompt.id = 'soundPrompt';
+        prompt.innerHTML = `
+            <div class="sound-prompt-inner">
+                <div>Click to enable sound</div>
+                <button id="enableSoundBtn">Enable</button>
+            </div>
+        `;
+        document.body.appendChild(prompt);
+        document.getElementById('enableSoundBtn').addEventListener('click', () => {
+            if (bgAudio) { bgAudio.muted = false; bgAudio.play().catch(()=>{}); }
+            prompt.remove();
+            userInteracted = true;
+            updateMusicButton();
+        });
+    }
+
     // unlock audio on first user interaction (some browsers block autoplay)
     document.addEventListener('click', function unlockAudio() {
         userInteracted = true;
-        // Try to resume bgAudio and typingAudio if applicable
-        if (bgAudio && bgAudio.paused) {
-            bgAudio.play().catch(() => {});
-        }
-        if (typingAudio && typingStarted) {
-            typingAudio.play().catch(() => {});
+        // Try to resume bgAudio if applicable
+        if (bgAudio) {
+            if (bgAudio.muted) {
+                bgAudio.muted = false;
+            }
+            if (bgAudio.paused) bgAudio.play().catch(() => {});
         }
         updateMusicButton();
         document.removeEventListener('click', unlockAudio);
@@ -164,6 +189,9 @@ document.addEventListener('DOMContentLoaded', function() {
             bgAudio.play().catch(()=>{});
         }
     });
+
+    // (music toggle removed) Attach event listeners for next buttons
+    document.querySelectorAll('button[data-action="next"]').forEach(btn => btn.addEventListener('click', nextStep));
 
     showStep(currentStep);
     createPetals();
@@ -191,6 +219,11 @@ function showStep(step) {
     document.querySelectorAll('.step').forEach(el => {
         el.classList.remove('active');
     });
+    // Clear any pending message timers when changing steps
+    if (_messageTimers.length) {
+        _messageTimers.forEach(id => clearTimeout(id));
+        _messageTimers = [];
+    }
     
     // Show current step
     const currentStepEl = document.getElementById(`step${step}`);
@@ -200,24 +233,36 @@ function showStep(step) {
     }
     currentStepEl.classList.add('active');
 
-    // If the typing area is present in this step, start the message typing (only once)
-    if (document.getElementById('typingText') && !typingStarted) {
-        typeMessage();
+    // If the typing area is present in this step, show the full message immediately
+    const typingTextEl = document.getElementById('typingText');
+    if (typingTextEl) {
+        if (step === 2) {
+            // Show each message line for 3 seconds in sequence
+            const fullMessageLines = [
+                `Dear ${userName},`,
+                "On your special day, I want you to know...",
+                "You are the most amazing person I've ever met.",
+                "Your smile brightens my darkest days.",
+                "Your laugh is my favorite sound.",
+                "I'm so grateful to have you in my life.",
+                "May this year bring you all the joy you deserve.",
+                "You deserve the world and more.",
+                "Happy Birthday, chotuu! ❤"
+            ];
+            const typedContainer = document.getElementById('typedMessage');
+            if (typedContainer) typedContainer.classList.add('show');
+            typingTextEl.classList.add('typing-static');
+            typingTextEl.innerHTML = '';
+            fullMessageLines.forEach((line, idx) => {
+                const t = setTimeout(() => {
+                    typingTextEl.innerHTML = `<span class="message-line">${line}</span>`;
+                }, idx * 3000);
+                _messageTimers.push(t);
+            });
+        }
     }
 
-    // Control typing sound: pause if not on the typing step (step 2)
-    try {
-        if (typingAudio) {
-            if (step === 2 && typingStarted) {
-                typingAudio.play().catch(() => {});
-            } else {
-                typingAudio.pause();
-                typingAudio.currentTime = 0;
-            }
-        }
-    } catch (e) {
-        // ignore audio errors
-    }
+    // Typing sound removed — no control needed here
     
     // Update progress bar
     const progressPercentage = ((step - 1) / (totalSteps - 1)) * 100;
@@ -258,8 +303,6 @@ function showStep(step) {
             document.getElementById('heartName').textContent = userName;
             break;
         case 4:
-            // Type out message (kept for backward compatibility)
-            if (!typingStarted) typeMessage();
             // Animate photo frame
             gsap.from(".photo-frame", {
                 y: 50,
@@ -444,66 +487,13 @@ function createPetals() {
     }
 }
 
-// Function to type out message
-function typeMessage() {
-    if (typingStarted) return;
-    typingStarted = true;
-    try { if (typingAudio) { typingAudio.currentTime = 0; typingAudio.play().catch(()=>{}); } } catch(e) {}
-    const messages = [
-        "On your special day, I want you to know...",
-        "You are the most amazing person I've ever met.",
-        "Your smile brightens my darkest days.",
-        "Your laugh is my favorite sound.",
-        "I'm so grateful to have you in my life.",
-        "May this year bring you all the joy you deserve.",
-        "You deserve the world and more.",
-        "Happy Birthday, chotuu! ❤"
-    ];
-    
-    const typingText = document.getElementById('typingText');
-    if (!typingText) return; // nothing to write to
-    let messageIndex = 0;
-    let charIndex = 0;
-    let isDeleting = false;
-    let typingSpeed = 100;
-    
-    function type() {
-        const currentMessage = messages[messageIndex];
-        
-        if (isDeleting) {
-            typingText.innerHTML = currentMessage.substring(0, charIndex - 1);
-            charIndex--;
-            typingSpeed = 50;
-        } else {
-            typingText.innerHTML = currentMessage.substring(0, charIndex + 1);
-            charIndex++;
-            typingSpeed = 100;
-        }
-        
-        if (!isDeleting && charIndex === currentMessage.length) {
-            isDeleting = true;
-            typingSpeed = 1500; // Pause at end of message
-        } else if (isDeleting && charIndex === 0) {
-            isDeleting = false;
-            messageIndex = (messageIndex + 1) % messages.length;
-            typingSpeed = 500; // Pause before next message
-        }
-        
-        setTimeout(type, typingSpeed);
-    }
-    
-    // Start typing after a short delay
-    setTimeout(() => {
-        document.getElementById('typedMessage').classList.add('show');
-        type();
-    }, 500);
-}
+// Typing animation removed — messages are rendered instantly for step 2.
 
 // Play a short named sound (click, typing, etc.)
 function playSound(name) {
     try {
         if (name === 'click' && clickAudio) { clickAudio.currentTime = 0; clickAudio.play().catch(()=>{}); }
-        if (name === 'typing' && typingAudio) { typingAudio.currentTime = 0; typingAudio.play().catch(()=>{}); }
+        // typing sound removed
     } catch(e){}
 }
 
@@ -519,10 +509,8 @@ function toggleMusic() {
         if (btn) btn.textContent = '🔈';
     }
 }
-
-// Expose commonly used functions to the global scope for inline handlers
+// (music toggle removed) no global exposure needed beyond nextStep/saveName
 if (typeof window !== 'undefined') {
-    window.toggleMusic = toggleMusic;
     window.nextStep = nextStep;
     window.saveName = saveName;
 }

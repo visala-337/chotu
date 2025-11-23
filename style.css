@@ -303,15 +303,14 @@ p {
     opacity: 1;
 }
 
-.typing-effect {
-    border-right: 2px solid #d81b60;
-    animation: blink 0.75s step-end infinite;
-    overflow: hidden;
-   
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+.typing-static {
+    border-right: none !important;
+    animation: none !important;
+}
+
+.message-line {
+    display: block;
+    margin-bottom: 0.6rem;
 }
 
 @keyframes blink {
@@ -408,24 +407,9 @@ p {
 }
 
 /* Music toggle button */
-.music-toggle {
-    position: absolute;
-    right: 18px;
-    top: 18px;
-    z-index: 30;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: linear-gradient(45deg,#fff,#ffe7ef);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 6px 18px rgba(216,27,96,0.12);
-    cursor: pointer;
-    font-size: 18px;
-}
+/* music toggle removed */
 
-.music-toggle:hover { transform: scale(1.05); }
+/* sound UI removed */
 
 .countdown {
     font-size: 2rem;
