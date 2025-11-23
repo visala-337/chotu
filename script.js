@@ -1,8 +1,9 @@
 
 // Initialize variables
 let currentStep = 1;
-const totalSteps = 6;
+let totalSteps = 0; // will be set after DOM loads to match actual .step elements
 let userName = "My Love";
+let typingStarted = false; // prevent multiple typing loops
 
 
 // Initialize particles.js
@@ -97,19 +98,27 @@ particlesJS("particles-js", {
 
 // Initialize GSAP animations
 document.addEventListener('DOMContentLoaded', function() {
+    // Determine how many steps are actually present in the HTML
+    totalSteps = document.querySelectorAll('.step').length || 1;
+
     showStep(currentStep);
     createPetals();
-    
-    // Animate the heart message
+
+    // Animate the heart message if those elements exist
     const heartMessage = document.getElementById('heartMessage');
-    document.getElementById('interactiveHeart').addEventListener('click', function() {
-        setTimeout(() => {
-            heartMessage.classList.add('show');
-        }, 500);
-    });
-    
-    // Set countdown (example: next 24 hours)
-    setCountdown();
+    const interactiveHeart = document.getElementById('interactiveHeart');
+    if (heartMessage && interactiveHeart) {
+        interactiveHeart.addEventListener('click', function() {
+            setTimeout(() => {
+                heartMessage.classList.add('show');
+            }, 500);
+        });
+    }
+
+    // Set countdown (example: next 24 hours) if countdown elements exist
+    if (document.getElementById('countdown')) {
+        setCountdown();
+    }
 });
 
 // Function to show current step
@@ -121,7 +130,16 @@ function showStep(step) {
     
     // Show current step
     const currentStepEl = document.getElementById(`step${step}`);
+    if (!currentStepEl) {
+        console.warn(`No element found for step${step}. Aborting showStep.`);
+        return;
+    }
     currentStepEl.classList.add('active');
+
+    // If the typing area is present in this step, start the message typing (only once)
+    if (document.getElementById('typingText') && !typingStarted) {
+        typeMessage();
+    }
     
     // Update progress bar
     const progressPercentage = ((step - 1) / (totalSteps - 1)) * 100;
@@ -162,8 +180,8 @@ function showStep(step) {
             document.getElementById('heartName').textContent = userName;
             break;
         case 4:
-            // Type out message
-            typeMessage();
+            // Type out message (kept for backward compatibility)
+            if (!typingStarted) typeMessage();
             // Animate photo frame
             gsap.from(".photo-frame", {
                 y: 50,
@@ -346,20 +364,21 @@ function createPetals() {
 
 // Function to type out message
 function typeMessage() {
+    if (typingStarted) return;
+    typingStarted = true;
     const messages = [
-        `Dear ${userName},`,
         "On your special day, I want you to know...",
         "You are the most amazing person I've ever met.",
         "Your smile brightens my darkest days.",
-        "Your laugh is my favorite sound in the world.",
-        "Your love gives me strength and happiness.",
+        "Your laugh is my favorite sound.",
         "I'm so grateful to have you in my life.",
         "May this year bring you all the joy you deserve.",
         "You deserve the world and more.",
-        "Happy Birthday, my love! ❤"
+        "Happy Birthday, chotuu! ❤"
     ];
     
     const typingText = document.getElementById('typingText');
+    if (!typingText) return; // nothing to write to
     let messageIndex = 0;
     let charIndex = 0;
     let isDeleting = false;
